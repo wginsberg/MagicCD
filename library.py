@@ -2,12 +2,13 @@
 
 import os
 import sys
+import shutil
 import subprocess
 import argparse
 
 import evdev
 
-DEFAULT_LIBRARY_PATH = os.path.join(os.environ["HOME"], ".rfid_library.csv")
+DEFAULT_LIBRARY_PATH = os.path.join(os.environ["HOME"], ".rfid_library")
 
 def rfid_readings():
     
@@ -32,11 +33,13 @@ def init(path, debug=False, quiet=False):
 
     if os.path.exists(path):
         confirmation = raw_input("Library already exists. Overwrite? [y/n]\n")
-        if confirmation != "y":
+        if confirmation == "y":
+            shutil.rmtree(path)
+        else:
             print "Aborting."
-        os.remove(path)
+            return
 
-    open(path, "w").close()
+    os.mkdir(path)
     print "Library initialized at {}".format(path)
 
 
@@ -47,12 +50,16 @@ def add_cwd_to_library(path, debug=False, quiet=False):
         identifier = raw_input("DEBUG MODE: Enter by keyboard\n")
     else:
         identifier = next(rfid_readings())
-    entry = os.getcwd().replace(" ", "\ " )
+        print identifier
 
-    with open(path, "a") as f:
-        f.write("{},{}\n".format(identifier, entry))
+    playlist_path = os.path.join(path, identifier)
+    files = sorted([path for path in os.listdir(".") if not path.startswith(".")])
+    playlist = "\n".join([os.path.join(os.getcwd(), _) for _ in  files])
+    
+    with open(playlist_path, "w") as f:
+        f.write(playlist)
 
-    print "Success: {} -> {}".format(identifier, entry)
+    print "Success"
 
 
 def playback_loop(path, debug=False, quiet=False):
@@ -61,46 +68,35 @@ def playback_loop(path, debug=False, quiet=False):
     Debug mode: Read a finite number of identifiers from stdin.
     """
 
-    with open(path, "r") as f:
+    playing = None
 
-        library = {}        
-        for line in f.read().split("\n"):
-            if not line:
-                continue
-            identifier = line.split(",")[0]
-            entry = line.split(",")[1]
-            library[identifier] = entry
+    if debug:
+        readings = list(range(1, 5)) 
+    else:
+        readings = rfid_readings()
 
-        playing = None
+    for identifier in readings:
 
+        print "Waiting for id ..."
+        
+        if not identifier:
+            break
+        
         if debug:
-            readings = list(range(5)) 
-        else:
-            readings = rfid_readings()
+            identifier = raw_input("DEBUG MODE: Enter by keyboard\n")
+        
+        playlist = os.path.join(path, identifier)
 
-        for identifier in readings:
-
-            print "Waiting for id ..."
-            
-            if not identifier:
-                break
-            
-            if debug:
-                identifier = raw_input("DEBUG MODE: Enter by keyboard\n")
-            
-            entry = library.get(identifier, None)
-
-            if entry is None:
-                print "Entry {} is not in the library".format(identifier)
+        # TODO remove unneeded use of shell=Truw
+        if os.path.exists(playlist):
+            if playing is not None:
+                playing.kill()
+            print "Playing"
+            if quiet:
+                playing = subprocess.Popen("cat {}".format(playlist), shell=True)
             else:
-                if playing is not None:
-                    p.kill()
-                print "Playing {}".format(entry)
-                tracks = os.path.join(entry, "*")
-                if quiet:
-                    playing = subprocess.Popen("echo {}".format(tracks), shell=True)
-                else:
-                    playing = subprocess.Popen("mplayer {}".format(tracks), shell=True)
+                playing = subprocess.Popen("mplayer -playlist {}".format(playlist), shell=True)
+            print "Entry {} is not in the library".format(identifier)
 
 
 def cat(path, debug=False, quite=False):
