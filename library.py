@@ -96,7 +96,7 @@ def playback_loop(path, debug=False, quiet=False):
                 playing = subprocess.Popen("cat {}".format(playlist), shell=True)
             else:
                 playing = subprocess.Popen("mplayer -playlist {}".format(playlist), shell=True)
-            print "Entry {} is not in the library".format(identifier)
+                print "Entry {} is not in the library".format(identifier)
 
 
 def cat(path, debug=False, quite=False):
