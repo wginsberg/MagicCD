@@ -29,6 +29,10 @@ def rfid_readings():
             yield "".join(buffer)
             buffer_i = 0
 
+def keyboard_readings(n=5):
+    for _ in range(1, n):
+        yield raw_input("DEBUG MODE: Enter by keyboard\n")
+
 def init(path, debug=False, quiet=False):
 
     if os.path.exists(path):
@@ -71,32 +75,28 @@ def playback_loop(path, debug=False, quiet=False):
     playing = None
 
     if debug:
-        readings = list(range(1, 5)) 
+        readings = keyboard_readings()
     else:
         readings = rfid_readings()
 
     for identifier in readings:
-
-        print "Waiting for id ..."
         
         if not identifier:
             break
         
-        if debug:
-            identifier = raw_input("DEBUG MODE: Enter by keyboard\n")
-        
+        print identifier
+
         playlist = os.path.join(path, identifier)
 
-        # TODO remove unneeded use of shell=Truw
         if os.path.exists(playlist):
             if playing is not None:
                 playing.kill()
-            print "Playing"
             if quiet:
-                playing = subprocess.Popen("cat {}".format(playlist), shell=True)
+                playing = subprocess.Popen(["cat", playlist])
             else:
-                playing = subprocess.Popen("mplayer -playlist {}".format(playlist), shell=True)
-                print "Entry {} is not in the library".format(identifier)
+                playing = subprocess.Popen(["mplayer", "-playlist", playlist])
+        else:
+            print "Entry {} is not in the library".format(identifier)
 
 
 def cat(path, debug=False, quite=False):
