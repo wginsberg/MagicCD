@@ -94,7 +94,11 @@ def playback_loop(path, debug=False, quiet=False):
             if quiet:
                 playing = subprocess.Popen(["cat", playlist])
             else:
-                playing = subprocess.Popen(["mplayer", "-playlist", playlist])
+                # Play music as a playlist with mplayer
+                # For this to work in the background we must direct in /dev/null
+                command = ["mplayer", "-playlist", playlist]
+                in_file = open(os.devnull, "r")
+                playing = subprocess.Popen(command, stdin=in_file)
         else:
             print "Entry {} is not in the library".format(identifier)
 
